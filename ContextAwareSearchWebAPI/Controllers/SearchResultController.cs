@@ -18,13 +18,12 @@ namespace ContextAwareSearchWebAPI.Controllers
             query = query.Trim();
             List<string> queryModifications = new List<string>();
             queryModifications.Add("learning " + query);
+            queryModifications.Add(query + " events");
             queryModifications.Add(query + " basics");
             queryModifications.Add(query + " research");
             queryModifications.Add(query + " courses");
-            queryModifications.Add(query + " events");
-            queryModifications.Add("how to learn " + query);
 
-            string[] context = {"coursera", "instructables"};
+            string[] context = {"coursera", "instructables", "edx", "udacity", "itunesu", "github", "khan academy"};
 
             //Set default web proxy - ONLY NEEDED FOR 1AND1 HOSTING
             //WebRequest.DefaultWebProxy = new WebProxy("ntproxyus.lxa.perfora.net", 3128);
@@ -40,14 +39,14 @@ namespace ContextAwareSearchWebAPI.Controllers
 
             //Search for given topic
             DataServiceQuery<Bing.WebResult> webQuery = bingContainer.Web(query, null, null, "en-us", null, null, null, null);
-            webQuery = webQuery.AddQueryOption("$top", 10);
+            webQuery = webQuery.AddQueryOption("$top", 20);
             searchResults.Add(webQuery.Execute());
 
             //Search for keywords
             foreach (string keyword in keywords)
             {
                 webQuery = bingContainer.Web(query + keyword.Trim(), null, null, "en-us", null, null, null, null);
-                webQuery = webQuery.AddQueryOption("$top", 10);
+                webQuery = webQuery.AddQueryOption("$top", 20);
                 searchResults.Add(webQuery.Execute());
             }
 
@@ -55,7 +54,7 @@ namespace ContextAwareSearchWebAPI.Controllers
             foreach (string queryMod in queryModifications)
             {
                 webQuery = bingContainer.Web(queryMod, null, null, "en-us", null, null, null, null);
-                webQuery = webQuery.AddQueryOption("$top", 10);
+                webQuery = webQuery.AddQueryOption("$top", 20);
                 searchResults.Add(webQuery.Execute());
             }
 
@@ -76,11 +75,11 @@ namespace ContextAwareSearchWebAPI.Controllers
                     //Modify rank based on user preferences
                     foreach (string keyword in keywords)
                     {
-                        if (result.Title.Contains(keyword))
+                        if (result.Title.ToLower().Contains(keyword))
                         {
                             rank = rank / 4;
                         }
-                        else if (result.Description.Contains(keyword))
+                        else if (result.Description.ToLower().Contains(keyword))
                         {
                             rank = rank / 2;
                         }
@@ -89,18 +88,31 @@ namespace ContextAwareSearchWebAPI.Controllers
                     //Modify rank based on static context
                     foreach (string word in context)
                     {
-                        if (result.Url.Contains(word))
+                        if (result.Url.ToLower().Contains(word))
                         {
                             rank = rank / 10;
                         }
-                        else if (result.Title.Contains(word))
+                        else if (result.Title.ToLower().Contains(word))
                         {
                             rank = rank / 4;
                         }
-                        else if (result.Description.Contains(word))
+                        else if (result.Description.ToLower().Contains(word))
                         {
                             rank = rank / 2;
                         }
+                    }
+
+                    if (result.Url.ToLower().Contains("youtube"))
+                    {
+                        rank = rank * 100;
+                    }
+                    else if (result.Title.ToLower().Contains("youtube"))
+                    {
+                        rank = rank * 100;
+                    }
+                    else if (result.Description.ToLower().Contains("youtube"))
+                    {
+                        rank = rank * 100;
                     }
 
                     temp.ranking = rank;
@@ -108,8 +120,6 @@ namespace ContextAwareSearchWebAPI.Controllers
                     initialRank += 100;
                 }
                 listNumber++;
-
-                
             }
 
             //Sort results by rank
